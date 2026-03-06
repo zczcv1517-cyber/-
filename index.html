@@ -1,21 +1,19 @@
-```html
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Tetris Original Theme - Coding Partner</title>
+    <title>Tetris Bradinsky Edition - Coding Partner</title>
     <style>
         body { background: #0f0f13; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        .game-container { display: flex; gap: 25px; padding: 25px; background: #1c1c25; border-radius: 15px; box-shadow: 0 0 40px rgba(13, 194, 255, 0.3); position: relative; border: 1px solid #333; }
+        .game-container { display: flex; gap: 25px; padding: 25px; background: #1c1c25; border-radius: 15px; box-shadow: 0 0 50px rgba(13, 194, 255, 0.2); position: relative; border: 1px solid #333; }
         #start-msg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; cursor: pointer; border-radius: 15px; }
-        #start-msg h1 { color: #0dc2ff; margin: 0 0 10px 0; text-shadow: 0 0 15px #0dc2ff; pointer-events: none; }
-        #start-msg p { font-size: 1.2em; animation: blink 1s infinite; pointer-events: none; }
+        #start-msg h1 { color: #0dc2ff; margin: 0 0 10px 0; text-shadow: 0 0 10px #0dc2ff; pointer-events: none; }
+        #start-msg p { font-size: 1.1em; color: #fff; animation: blink 1s infinite; pointer-events: none; }
         canvas { border: 3px solid #444; background-color: #000; border-radius: 5px; }
         .stats { display: flex; flex-direction: column; width: 160px; gap: 15px; }
         .stat-box { background: #2a2a35; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #444; }
         .stat-label { font-size: 0.75em; color: #0dc2ff; text-transform: uppercase; margin-bottom: 5px; }
         .stat-value { font-size: 1.6em; font-weight: bold; font-family: 'Courier New', monospace; }
-        #next { background: #000; border: 1px solid #444; margin-top: 10px; border-radius: 4px; }
         .controls { font-size: 0.75em; color: #777; line-height: 1.8; margin-top: auto; padding: 10px; background: #15151e; border-radius: 5px; }
         @keyframes blink { 50% { opacity: 0.5; } }
     </style>
@@ -24,7 +22,7 @@
 
 <div class="game-container">
     <div id="start-msg">
-        <h1>TETRIS A-THEME</h1>
+        <h1>TETRIS - Bradinsky</h1>
         <p>CLICK TO START WITH BGM</p>
     </div>
     <canvas id="tetris" width="240" height="400"></canvas>
@@ -45,10 +43,10 @@
 </div>
 
 <script>
-// --- 오리지널 테트리스 A-테마 오디오 엔진 ---
+// --- Bradinsky BGM 오디오 엔진 ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-function playNote(freq, start, duration, type = 'square', volume = 0.04) {
+function playNote(freq, start, duration, type = 'square', volume = 0.03) {
     if (freq === 0) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -63,41 +61,34 @@ function playNote(freq, start, duration, type = 'square', volume = 0.04) {
 }
 
 // 음계 주파수 정의
-const E5 = 659.25, B4 = 493.88, C5 = 523.25, D5 = 587.33, A4 = 440.00, G4 = 392.00, F4 = 349.23, E4 = 329.63, A5 = 880.00, G5 = 783.99, F5 = 698.46;
+const C4 = 261.63, D4 = 293.66, E4 = 329.63, F4 = 349.23, G4 = 392.00, A4 = 440.00, B4 = 493.88;
+const C5 = 523.25, D5 = 587.33, E5 = 659.25, F5 = 698.46, G5 = 783.99, A5 = 880.00, B5 = 987.77;
 
-// 유튜브 원곡 기반 풀 버전 멜로디 데이터
-const aThemeMelody = [
-    // Part A
-    [E5, 2], [B4, 1], [C5, 1], [D5, 2], [C5, 1], [B4, 1], [A4, 2], [A4, 1], [C5, 1], [E5, 2], [D5, 1], [C5, 1],
-    [B4, 3], [C5, 1], [D5, 2], [E5, 2], [C5, 2], [A4, 2], [A4, 2], [0, 1],
-    // Part B
-    [D5, 3], [F5, 1], [A5, 2], [G5, 1], [F5, 1], [E5, 3], [C5, 1], [E5, 2], [D5, 1], [C5, 1],
-    [B4, 2], [B4, 1], [C5, 1], [D5, 2], [E5, 2], [C5, 2], [A4, 2], [A4, 2], [0, 1],
-    // Part C (Transition)
-    [E4, 4], [C5, 4], [D5, 4], [B4, 4], [C5, 4], [A4, 4], [G4, 4], [B4, 4],
-    [E4, 4], [C5, 4], [D5, 4], [B4, 4], [C5, 2], [E5, 2], [A5, 4], [G5, 4]
+// Bradinsky 메인 멜로디 루프
+const bradinskyMelody = [
+    [C5, 1], [E5, 1], [G5, 1], [C6 = 1046.50, 2], [B5, 1], [A5, 1], [G5, 2],
+    [F5, 1], [A5, 1], [C6, 1], [F6 = 1396.91, 2], [E5, 1], [D5, 1], [C5, 2],
+    [G4, 1], [B4, 1], [D5, 1], [G5, 2], [F5, 1], [E5, 1], [D5, 2],
+    [C5, 1], [E5, 1], [G5, 1], [C6, 2], [G5, 1], [E5, 1], [C5, 2]
 ];
 
 function startBGM() {
-    const step = 0.125; // 원곡의 경쾌한 속도
+    const step = 0.15;
     let nextNoteTime = audioCtx.currentTime;
-
     function scheduler() {
         while (nextNoteTime < audioCtx.currentTime + 0.2) {
-            aThemeMelody.forEach(([freq, dur]) => {
-                // 메인 멜로디 (게임보이 느낌의 사각파)
+            bradinskyMelody.forEach(([freq, dur]) => {
                 playNote(freq, nextNoteTime, dur * step * 0.9, 'square', 0.03);
-                // 베이스 비트
-                if (nextNoteTime % (step * 4) < 0.01) playNote(55, nextNoteTime, 0.1, 'sine', 0.05);
+                if (nextNoteTime % (step * 4) < 0.01) playNote(60, nextNoteTime, 0.1, 'sine', 0.05);
                 nextNoteTime += dur * step;
             });
         }
-        setTimeout(scheduler, 500);
+        setTimeout(scheduler, 1000);
     }
     scheduler();
 }
 
-// --- 게임 로직 ---
+// --- 게임 로직 및 3D 블록 ---
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next');
@@ -108,6 +99,16 @@ nextContext.scale(20, 20);
 
 const colors = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
 
+function drawBlock(x, y, colorIndex, ctx) {
+    const color = colors[colorIndex];
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, 1, 1);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.fillRect(x, y, 1, 0.1); ctx.fillRect(x, y, 0.1, 1);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(x, y + 0.9, 1, 0.1); ctx.fillRect(x + 0.9, y, 0.1, 1);
+}
+
 function createMatrix(w, h) {
     const matrix = [];
     while (h--) matrix.push(new Array(w).fill(0));
@@ -115,22 +116,19 @@ function createMatrix(w, h) {
 }
 
 function createPiece(type) {
-    if (type === 'I') return [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]];
-    if (type === 'L') return [[0, 2, 0], [0, 2, 0], [0, 2, 2]];
-    if (type === 'J') return [[0, 3, 0], [0, 3, 0], [3, 3, 0]];
-    if (type === 'O') return [[4, 4], [4, 4]];
-    if (type === 'Z') return [[5, 5, 0], [0, 5, 5], [0, 0, 0]];
-    if (type === 'S') return [[0, 6, 6], [6, 6, 0], [0, 0, 0]];
-    if (type === 'T') return [[0, 7, 0], [7, 7, 7], [0, 0, 0]];
+    if (type === 'I') return [[0, 2, 0, 0], [0, 2, 0, 0], [0, 2, 0, 0], [0, 2, 0, 0]];
+    if (type === 'L') return [[0, 5, 0], [0, 5, 0], [0, 5, 5]];
+    if (type === 'J') return [[0, 7, 0], [0, 7, 0], [7, 7, 0]];
+    if (type === 'O') return [[6, 6], [6, 6]];
+    if (type === 'Z') return [[4, 4, 0], [0, 4, 4], [0, 0, 0]];
+    if (type === 'S') return [[0, 3, 3], [3, 3, 0], [0, 0, 0]];
+    if (type === 'T') return [[0, 1, 0], [1, 1, 1], [0, 0, 0]];
 }
 
 function drawMatrix(matrix, offset, ctx) {
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
-            if (value !== 0) {
-                ctx.fillStyle = colors[value];
-                ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
-            }
+            if (value !== 0) drawBlock(x + offset.x, y + offset.y, value, ctx);
         });
     });
 }
@@ -213,7 +211,7 @@ document.getElementById('start-msg').addEventListener('click', function() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     this.style.display = 'none';
     gameRunning = true;
-    startBGM(); // 오리지널 A-테마 시작
+    startBGM();
     playerReset();
     update();
 });
@@ -223,15 +221,6 @@ document.addEventListener('keydown', event => {
     if (event.keyCode === 37) { player.pos.x--; if(collide(arena, player)) player.pos.x++; }
     else if (event.keyCode === 39) { player.pos.x++; if(collide(arena, player)) player.pos.x--; }
     else if (event.keyCode === 40) playerDrop();
-    else if (event.keyCode === 81) {
-        // 회전 로직
-        const matrix = player.matrix;
-        for (let y = 0; y < matrix.length; ++y) {
-            for (let x = 0; x < y; ++x) [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
-        }
-        matrix.reverse();
-        if (collide(arena, player)) matrix.reverse(); // 충돌 시 복구
-    }
 });
 </script>
 </body>
