@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Tetris Bradinsky - Sound Effects Added</title>
+    <title>Tetris Bradinsky - Level Up Edition</title>
     <style>
         body { background: #0f0f13; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
         .game-container { display: flex; gap: 25px; padding: 25px; background: #1c1c25; border-radius: 15px; box-shadow: 0 0 50px rgba(13, 194, 255, 0.2); position: relative; border: 1px solid #333; }
@@ -11,10 +11,10 @@
         #start-msg p { font-size: 1.1em; color: #fff; animation: blink 1s infinite; pointer-events: none; }
         canvas { border: 3px solid #444; background-color: #000; border-radius: 5px; }
         .stats { display: flex; flex-direction: column; width: 160px; gap: 15px; }
-        .stat-box { background: #2a2a35; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #444; }
+        .stat-box { background: #2a2a35; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #444; }
         .stat-label { font-size: 0.75em; color: #0dc2ff; text-transform: uppercase; margin-bottom: 5px; }
-        .stat-value { font-size: 1.6em; font-weight: bold; font-family: 'Courier New', monospace; }
-        .controls { font-size: 0.75em; color: #777; line-height: 1.8; margin-top: auto; padding: 10px; background: #15151e; border-radius: 5px; }
+        .stat-value { font-size: 1.5em; font-weight: bold; font-family: 'Courier New', monospace; }
+        .controls { font-size: 0.7em; color: #777; line-height: 1.6; margin-top: auto; padding: 10px; background: #15151e; border-radius: 5px; }
         @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
@@ -22,7 +22,7 @@
 
 <div class="game-container">
     <div id="start-msg">
-        <h1>TETRIS - Bradinsky</h1>
+        <h1>TETRIS LEVEL UP</h1>
         <p>CLICK TO START</p>
     </div>
     <canvas id="tetris" width="240" height="400"></canvas>
@@ -32,18 +32,22 @@
             <canvas id="next" width="100" height="100"></canvas>
         </div>
         <div class="stat-box">
+            <div class="stat-label">Level</div>
+            <div id="level" class="stat-value">1</div>
+        </div>
+        <div class="stat-box">
             <div class="stat-label">Score</div>
             <div id="score" class="stat-value">0</div>
         </div>
         <div class="controls">
-            <b>Arrows</b> : Move & Drop<br>
-            <b>Q / W</b> : Rotate Left / Right
+            <b>Arrows</b>: Move & Drop<br>
+            <b>Q / W</b>: Rotate Piece
         </div>
     </div>
 </div>
 
 <script>
-// --- 오디오 엔진 (BGM & 효과음) ---
+// --- 오디오 엔진 ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 function playNote(freq, start, duration, type = 'square', volume = 0.03) {
@@ -60,11 +64,17 @@ function playNote(freq, start, duration, type = 'square', volume = 0.03) {
     osc.stop(start + duration);
 }
 
-// 점수 획득 시 효과음 함수
 function playScoreSound() {
     const now = audioCtx.currentTime;
-    playNote(880, now, 0.1, 'triangle', 0.1); // 높은 A음
-    playNote(1320, now + 0.05, 0.15, 'triangle', 0.08); // 더 높은 E음
+    playNote(880, now, 0.1, 'triangle', 0.1);
+    playNote(1320, now + 0.05, 0.15, 'triangle', 0.08);
+}
+
+function playLevelUpSound() {
+    const now = audioCtx.currentTime;
+    [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+        playNote(f, now + (i * 0.1), 0.2, 'square', 0.05);
+    });
 }
 
 const bradinskyMelody = [
@@ -78,7 +88,7 @@ function startBGM() {
     function scheduler() {
         while (nextNoteTime < audioCtx.currentTime + 0.2) {
             bradinskyMelody.forEach(([freq, dur]) => {
-                playNote(freq, nextNoteTime, dur * step * 0.9, 'square', 0.02);
+                playNote(freq, nextNoteTime, dur * step * 0.9, 'square', 0.015);
                 nextNoteTime += dur * step;
             });
         }
@@ -108,11 +118,10 @@ function drawBlock(x, y, colorIndex, ctx) {
     ctx.fillRect(x, y + 0.9, 1, 0.1); ctx.fillRect(x + 0.9, y, 0.1, 1);
 }
 
-function createMatrix(w, h) {
-    const matrix = [];
-    while (h--) matrix.push(new Array(w).fill(0));
-    return matrix;
-}
+const arena = [];
+for(let i=0; i<20; i++) arena.push(new Array(12).fill(0));
+
+const player = { pos: {x: 0, y: 0}, matrix: null, next: null, score: 0, level: 1 };
 
 function createPiece(type) {
     if (type === 'I') return [[0, 2, 0, 0], [0, 2, 0, 0], [0, 2, 0, 0], [0, 2, 0, 0]];
@@ -126,12 +135,9 @@ function createPiece(type) {
 
 function rotate(matrix, dir) {
     for (let y = 0; y < matrix.length; ++y) {
-        for (let x = 0; x < y; ++x) {
-            [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
-        }
+        for (let x = 0; x < y; ++x) [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
     }
-    if (dir > 0) matrix.forEach(row => row.reverse());
-    else matrix.reverse();
+    if (dir > 0) matrix.forEach(row => row.reverse()); else matrix.reverse();
 }
 
 function collide(arena, player) {
@@ -144,67 +150,52 @@ function collide(arena, player) {
     return false;
 }
 
-function merge(arena, player) {
-    player.matrix.forEach((row, y) => {
-        row.forEach((value, x) => {
-            if (value !== 0) arena[y + player.pos.y][x + player.pos.x] = value;
-        });
-    });
-}
-
-const arena = createMatrix(12, 20);
-const player = { pos: {x: 0, y: 0}, matrix: null, next: null, score: 0 };
-
-function playerRotate(dir) {
-    const pos = player.pos.x;
-    let offset = 1;
-    rotate(player.matrix, dir);
-    while (collide(arena, player)) {
-        player.pos.x += offset;
-        offset = -(offset + (offset > 0 ? 1 : -1));
-        if (offset > player.matrix[0].length) {
-            rotate(player.matrix, -dir);
-            player.pos.x = pos;
-            return;
-        }
-    }
-}
-
 function playerReset() {
     const pieces = 'ILJOTSZ';
     player.matrix = player.next || createPiece(pieces[pieces.length * Math.random() | 0]);
     player.next = createPiece(pieces[pieces.length * Math.random() | 0]);
     player.pos.y = 0;
     player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
-    if (collide(arena, player)) arena.forEach(row => row.fill(0));
-    
+    if (collide(arena, player)) {
+        arena.forEach(row => row.fill(0));
+        player.score = 0;
+        player.level = 1;
+        dropInterval = 1000;
+        updateUI();
+    }
     nextContext.fillStyle = '#000';
     nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
-    player.next.forEach((row, y) => {
-        row.forEach((value, x) => {
-            if (value !== 0) drawBlock(x + 1, y + 1, value, nextContext);
-        });
-    });
+    player.next.forEach((row, y) => row.forEach((v, x) => { if (v !== 0) drawBlock(x + 1, y + 1, v, nextContext); }));
+}
+
+function updateUI() {
+    document.getElementById('score').innerText = player.score;
+    document.getElementById('level').innerText = player.level;
 }
 
 function playerDrop() {
     player.pos.y++;
     if (collide(arena, player)) {
         player.pos.y--;
-        merge(arena, player);
+        player.matrix.forEach((row, y) => row.forEach((v, x) => { if (v !== 0) arena[y + player.pos.y][x + player.pos.x] = v; }));
         playerReset();
-        // 라인 삭제 및 점수 효과음 로직
+        
         outer: for (let y = arena.length - 1; y > 0; --y) {
-            for (let x = 0; x < arena[y].length; ++x) {
-                if (arena[y][x] === 0) continue outer;
-            }
+            for (let x = 0; x < arena[y].length; ++x) { if (arena[y][x] === 0) continue outer; }
             arena.splice(y, 1);
             arena.unshift(new Array(12).fill(0));
             player.score += 10;
-            playScoreSound(); // 효과음 재생
+            playScoreSound();
+            
+            // 레벨 업 로직: 100점마다 레벨 증가 및 속도 가속
+            if (player.score > 0 && player.score % 100 === 0) {
+                player.level++;
+                playLevelUpSound();
+                dropInterval = Math.max(100, dropInterval * 0.9); // 최소 0.1초 제한
+            }
             y++;
         }
-        document.getElementById('score').innerText = player.score;
+        updateUI();
     }
     dropCounter = 0;
 }
@@ -220,8 +211,8 @@ function update(time = 0) {
     
     context.fillStyle = '#000';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    arena.forEach((row, y) => row.forEach((value, x) => { if (value !== 0) drawBlock(x, y, value, context); }));
-    player.matrix.forEach((row, y) => row.forEach((value, x) => { if (value !== 0) drawBlock(x + player.pos.x, y + player.pos.y, value, context); }));
+    arena.forEach((row, y) => row.forEach((v, x) => { if (v !== 0) drawBlock(x, y, v, context); }));
+    player.matrix.forEach((row, y) => row.forEach((v, x) => { if (v !== 0) drawBlock(x + player.pos.x, y + player.pos.y, v, context); }));
     requestAnimationFrame(update);
 }
 
@@ -239,8 +230,11 @@ document.addEventListener('keydown', event => {
     if (event.keyCode === 37) { player.pos.x--; if (collide(arena, player)) player.pos.x++; }
     else if (event.keyCode === 39) { player.pos.x++; if (collide(arena, player)) player.pos.x--; }
     else if (event.keyCode === 40) playerDrop();
-    else if (event.keyCode === 81) playerRotate(-1);
-    else if (event.keyCode === 87) playerRotate(1);
+    else if (event.keyCode === 81 || event.keyCode === 87) {
+        const dir = event.keyCode === 81 ? -1 : 1;
+        rotate(player.matrix, dir);
+        if (collide(arena, player)) rotate(player.matrix, -dir);
+    }
 });
 </script>
 </body>
