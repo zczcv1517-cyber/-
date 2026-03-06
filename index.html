@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Tetris Bradinsky Edition - Coding Partner</title>
+    <title>Tetris Bradinsky - Rotation Fixed</title>
     <style>
         body { background: #0f0f13; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
         .game-container { display: flex; gap: 25px; padding: 25px; background: #1c1c25; border-radius: 15px; box-shadow: 0 0 50px rgba(13, 194, 255, 0.2); position: relative; border: 1px solid #333; }
@@ -23,7 +23,7 @@
 <div class="game-container">
     <div id="start-msg">
         <h1>TETRIS - Bradinsky</h1>
-        <p>CLICK TO START WITH BGM</p>
+        <p>CLICK TO START</p>
     </div>
     <canvas id="tetris" width="240" height="400"></canvas>
     <div class="stats">
@@ -37,15 +37,15 @@
         </div>
         <div class="controls">
             <b>Arrows</b> : Move & Drop<br>
-            <b>Q, W</b> : Rotate Piece
+            <b>Q</b> : Rotate Left<br>
+            <b>W</b> : Rotate Right
         </div>
     </div>
 </div>
 
 <script>
-// --- Bradinsky BGM 오디오 엔진 ---
+// --- 오디오 엔진 (Bradinsky) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
 function playNote(freq, start, duration, type = 'square', volume = 0.03) {
     if (freq === 0) return;
     const osc = audioCtx.createOscillator();
@@ -60,16 +60,9 @@ function playNote(freq, start, duration, type = 'square', volume = 0.03) {
     osc.stop(start + duration);
 }
 
-// 음계 주파수 정의
-const C4 = 261.63, D4 = 293.66, E4 = 329.63, F4 = 349.23, G4 = 392.00, A4 = 440.00, B4 = 493.88;
-const C5 = 523.25, D5 = 587.33, E5 = 659.25, F5 = 698.46, G5 = 783.99, A5 = 880.00, B5 = 987.77;
-
-// Bradinsky 메인 멜로디 루프
 const bradinskyMelody = [
-    [C5, 1], [E5, 1], [G5, 1], [C6 = 1046.50, 2], [B5, 1], [A5, 1], [G5, 2],
-    [F5, 1], [A5, 1], [C6, 1], [F6 = 1396.91, 2], [E5, 1], [D5, 1], [C5, 2],
-    [G4, 1], [B4, 1], [D5, 1], [G5, 2], [F5, 1], [E5, 1], [D5, 2],
-    [C5, 1], [E5, 1], [G5, 1], [C6, 2], [G5, 1], [E5, 1], [C5, 2]
+    [523.25, 1], [659.25, 1], [783.99, 1], [1046.50, 2], [987.77, 1], [880.00, 1], [783.99, 2],
+    [698.46, 1], [880.00, 1], [1046.50, 1], [1396.91, 2], [659.25, 1], [587.33, 1], [523.25, 2]
 ];
 
 function startBGM() {
@@ -78,17 +71,16 @@ function startBGM() {
     function scheduler() {
         while (nextNoteTime < audioCtx.currentTime + 0.2) {
             bradinskyMelody.forEach(([freq, dur]) => {
-                playNote(freq, nextNoteTime, dur * step * 0.9, 'square', 0.03);
-                if (nextNoteTime % (step * 4) < 0.01) playNote(60, nextNoteTime, 0.1, 'sine', 0.05);
+                playNote(freq, nextNoteTime, dur * step * 0.9, 'square', 0.02);
                 nextNoteTime += dur * step;
             });
         }
-        setTimeout(scheduler, 1000);
+        setTimeout(scheduler, 500);
     }
     scheduler();
 }
 
-// --- 게임 로직 및 3D 블록 ---
+// --- 게임 엔진 ---
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next');
@@ -103,7 +95,7 @@ function drawBlock(x, y, colorIndex, ctx) {
     const color = colors[colorIndex];
     ctx.fillStyle = color;
     ctx.fillRect(x, y, 1, 1);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.fillRect(x, y, 1, 0.1); ctx.fillRect(x, y, 0.1, 1);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
     ctx.fillRect(x, y + 0.9, 1, 0.1); ctx.fillRect(x + 0.9, y, 0.1, 1);
@@ -125,16 +117,15 @@ function createPiece(type) {
     if (type === 'T') return [[0, 1, 0], [1, 1, 1], [0, 0, 0]];
 }
 
-function drawMatrix(matrix, offset, ctx) {
-    matrix.forEach((row, y) => {
-        row.forEach((value, x) => {
-            if (value !== 0) drawBlock(x + offset.x, y + offset.y, value, ctx);
-        });
-    });
+function rotate(matrix, dir) {
+    for (let y = 0; y < matrix.length; ++y) {
+        for (let x = 0; x < y; ++x) {
+            [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
+        }
+    }
+    if (dir > 0) matrix.forEach(row => row.reverse());
+    else matrix.reverse();
 }
-
-const arena = createMatrix(12, 20);
-const player = { pos: {x: 0, y: 0}, matrix: null, next: null, score: 0 };
 
 function collide(arena, player) {
     const [m, o] = [player.matrix, player.pos];
@@ -154,19 +145,39 @@ function merge(arena, player) {
     });
 }
 
+const arena = createMatrix(12, 20);
+const player = { pos: {x: 0, y: 0}, matrix: null, next: null, score: 0 };
+
+function playerRotate(dir) {
+    const pos = player.pos.x;
+    let offset = 1;
+    rotate(player.matrix, dir);
+    while (collide(arena, player)) {
+        player.pos.x += offset;
+        offset = -(offset + (offset > 0 ? 1 : -1));
+        if (offset > player.matrix[0].length) {
+            rotate(player.matrix, -dir);
+            player.pos.x = pos;
+            return;
+        }
+    }
+}
+
 function playerReset() {
     const pieces = 'ILJOTSZ';
     player.matrix = player.next || createPiece(pieces[pieces.length * Math.random() | 0]);
     player.next = createPiece(pieces[pieces.length * Math.random() | 0]);
     player.pos.y = 0;
     player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
-    if (collide(arena, player)) {
-        arena.forEach(row => row.fill(0));
-        player.score = 0;
-    }
+    if (collide(arena, player)) arena.forEach(row => row.fill(0));
+    
     nextContext.fillStyle = '#000';
     nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
-    drawMatrix(player.next, {x: 1, y: 1}, nextContext);
+    player.next.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value !== 0) drawBlock(x + 1, y + 1, value, nextContext);
+        });
+    });
 }
 
 function playerDrop() {
@@ -179,20 +190,17 @@ function playerDrop() {
             for (let x = 0; x < arena[y].length; ++x) {
                 if (arena[y][x] === 0) continue outer;
             }
-            const row = arena.splice(y, 1)[0].fill(0);
-            arena.unshift(row);
-            ++y;
+            arena.splice(y, 1);
+            arena.unshift(new Array(12).fill(0));
             player.score += 10;
+            y++;
         }
         document.getElementById('score').innerText = player.score;
     }
     dropCounter = 0;
 }
 
-let dropCounter = 0;
-let dropInterval = 1000;
-let lastTime = 0;
-let gameRunning = false;
+let dropCounter = 0, dropInterval = 1000, lastTime = 0, gameRunning = false;
 
 function update(time = 0) {
     if (!gameRunning) return;
@@ -200,10 +208,11 @@ function update(time = 0) {
     lastTime = time;
     dropCounter += deltaTime;
     if (dropCounter > dropInterval) playerDrop();
+    
     context.fillStyle = '#000';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    drawMatrix(arena, {x: 0, y: 0}, context);
-    drawMatrix(player.matrix, player.pos, context);
+    arena.forEach((row, y) => row.forEach((value, x) => { if (value !== 0) drawBlock(x, y, value, context); }));
+    player.matrix.forEach((row, y) => row.forEach((value, x) => { if (value !== 0) drawBlock(x + player.pos.x, y + player.pos.y, value, context); }));
     requestAnimationFrame(update);
 }
 
@@ -218,9 +227,11 @@ document.getElementById('start-msg').addEventListener('click', function() {
 
 document.addEventListener('keydown', event => {
     if (!gameRunning) return;
-    if (event.keyCode === 37) { player.pos.x--; if(collide(arena, player)) player.pos.x++; }
-    else if (event.keyCode === 39) { player.pos.x++; if(collide(arena, player)) player.pos.x--; }
+    if (event.keyCode === 37) { player.pos.x--; if (collide(arena, player)) player.pos.x++; }
+    else if (event.keyCode === 39) { player.pos.x++; if (collide(arena, player)) player.pos.x--; }
     else if (event.keyCode === 40) playerDrop();
+    else if (event.keyCode === 81) playerRotate(-1); // Q: 왼쪽 회전
+    else if (event.keyCode === 87) playerRotate(1);  // W: 오른쪽 회전
 });
 </script>
 </body>
