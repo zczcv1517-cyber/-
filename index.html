@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Tetris with Sound - Coding Partner</title>
+    <title>Professional Tetris - Coding Partner</title>
     <style>
         body { background: #1a1a1a; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
         .game-container { display: flex; gap: 20px; padding: 20px; background: #2a2a2a; border-radius: 10px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; }
@@ -13,12 +13,12 @@
         .stat-value { font-size: 1.5em; font-weight: bold; }
         #next { background: #000; border: 1px solid #444; margin-top: 5px; }
         .controls { font-size: 0.7em; color: #888; line-height: 1.6; }
-        #start-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px; text-align: center; z-index: 10; cursor: pointer; border: 1px solid #fff; }
+        #start-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); padding: 30px; border-radius: 10px; text-align: center; z-index: 10; cursor: pointer; border: 2px solid #0DC2FF; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="start-msg">클릭하여 게임 시작 및 오디오 활성화</div>
+<div id="start-msg">클릭하여 테트리스 시작<br>(사운드 활성화)</div>
 
 <div class="game-container">
     <div>
@@ -45,38 +45,52 @@
 </div>
 
 <script>
-// --- 오디오 엔진 (Web Audio API) ---
+// --- 오디오 엔진 (테트리스 메인 테마 구현) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playNote(freq, start, duration) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, start);
+    gain.gain.setValueAtTime(0.02, start);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(start);
+    osc.stop(start + duration);
+}
+
+function playBGM() {
+    const tempo = 0.25;
+    const melody = [
+        [659.25, 1], [493.88, 0.5], [523.25, 0.5], [587.33, 1], [523.25, 0.5], [493.88, 0.5],
+        [440.00, 1], [440.00, 0.5], [523.25, 0.5], [659.25, 1], [587.33, 0.5], [523.25, 0.5],
+        [493.88, 1.5], [523.25, 0.5], [587.33, 1], [659.25, 1], [523.25, 1], [440.00, 1], [440.00, 1]
+    ];
+    
+    let time = audioCtx.currentTime;
+    function scheduler() {
+        melody.forEach(([freq, dur]) => {
+            playNote(freq, time, dur * tempo * 1.8);
+            time += dur * tempo * 2;
+        });
+        setTimeout(scheduler, time - audioCtx.currentTime); // 무한 반복
+    }
+    scheduler();
+}
 
 function playLineSound() {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1);
     gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.1);
-}
-
-function playBGM() {
-    const notes = [261.63, 293.66, 329.63, 349.23, 392.00]; // C4, D4, E4, F4, G4
-    let i = 0;
-    setInterval(() => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.frequency.setValueAtTime(notes[i % notes.length], audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.5);
-        i++;
-    }, 500);
 }
 
 // --- 게임 로직 ---
@@ -135,7 +149,7 @@ function drawGhost(player) {
     const ghost = { pos: {x: player.pos.x, y: player.pos.y}, matrix: player.matrix };
     while (!collide(arena, ghost)) { ghost.pos.y++; }
     ghost.pos.y--;
-    context.globalAlpha = 0.2;
+    context.globalAlpha = 0.15;
     drawMatrix(ghost.matrix, ghost.pos, context);
     context.globalAlpha = 1.0;
 }
@@ -179,22 +193,26 @@ function arenaSweep() {
         player.score += rowCount * 10;
         rowCount *= 2;
         cleared = true;
+    }
+    if (cleared) {
+        playLineSound();
         if(player.score >= player.level * 100) {
             player.level++;
             dropInterval *= 0.9;
         }
     }
-    if (cleared) playLineSound(); // 라인 클리어 시 소리 재생
     updateScore();
 }
 
+// 블록 즉시 멈춤 핵심 로직
 function playerDrop() {
     player.pos.y++;
     if (collide(arena, player)) {
-        player.pos.y--;
-        merge(arena, player);
+        player.pos.y--; // 충돌 직전 위치로 복구
+        merge(arena, player); // 즉시 고정
         playerReset();
         arenaSweep();
+        return; // 즉시 종료하여 불필요한 카운터 초기화 방지
     }
     dropCounter = 0;
 }
@@ -259,7 +277,6 @@ function updateScore() {
 const arena = createMatrix(12, 20);
 const player = { pos: {x: 0, y: 0}, matrix: null, next: null, score: 0, level: 1 };
 
-// 시작 버튼 클릭 시 오디오 및 게임 활성화
 document.getElementById('start-msg').addEventListener('click', () => {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     document.getElementById('start-msg').style.display = 'none';
