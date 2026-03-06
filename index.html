@@ -2,59 +2,66 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Professional Tetris - Coding Partner</title>
+    <title>Extreme Tetris - Coding Partner</title>
     <style>
-        body { background: #1a1a1a; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        .game-container { display: flex; gap: 20px; padding: 20px; background: #2a2a2a; border-radius: 10px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; }
-        canvas { border: 2px solid #444; background-color: #000; }
-        .stats { display: flex; flex-direction: column; justify-content: space-between; width: 150px; }
-        .stat-box { background: #333; padding: 15px; border-radius: 5px; margin-bottom: 10px; text-align: center; }
-        .stat-label { font-size: 0.8em; color: #aaa; text-transform: uppercase; }
-        .stat-value { font-size: 1.5em; font-weight: bold; }
-        #next { background: #000; border: 1px solid #444; margin-top: 5px; }
-        .controls { font-size: 0.7em; color: #888; line-height: 1.6; }
-        #start-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); padding: 30px; border-radius: 10px; text-align: center; z-index: 10; cursor: pointer; border: 2px solid #0DC2FF; font-weight: bold; }
+        body { background: #0f0f13; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        .game-container { display: flex; gap: 25px; padding: 25px; background: #1c1c25; border-radius: 15px; box-shadow: 0 0 40px rgba(13, 194, 255, 0.2); position: relative; border: 1px solid #333; }
+        canvas { border: 3px solid #444; background-color: #000; border-radius: 5px; }
+        .stats { display: flex; flex-direction: column; justify-content: flex-start; width: 160px; gap: 15px; }
+        .stat-box { background: #2a2a35; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #444; }
+        .stat-label { font-size: 0.75em; color: #0dc2ff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .stat-value { font-size: 1.6em; font-weight: bold; font-family: 'Courier New', Courier, monospace; }
+        #next { background: #000; border: 1px solid #444; margin-top: 10px; border-radius: 4px; }
+        .controls { font-size: 0.75em; color: #777; line-height: 1.8; margin-top: auto; padding: 10px; background: #15151e; border-radius: 5px; }
+        #start-msg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; border-radius: 15px; }
+        #start-msg h1 { color: #0dc2ff; margin-bottom: 10px; text-shadow: 0 0 10px #0dc2ff; }
+        #start-msg p { font-size: 1.1em; color: #fff; }
     </style>
 </head>
 <body>
 
-<div id="start-msg">클릭하여 테트리스 시작<br>(사운드 활성화)</div>
-
 <div class="game-container">
+    <div id="start-msg">
+        <h1>EXTREME TETRIS</h1>
+        <p>클릭하여 시작 (BGM ON)</p>
+    </div>
     <div>
         <canvas id="tetris" width="240" height="400"></canvas>
     </div>
     <div class="stats">
         <div class="stat-box">
-            <div class="stat-label">Next</div>
+            <div class="stat-label">Next Piece</div>
             <canvas id="next" width="100" height="100"></canvas>
         </div>
         <div class="stat-box">
-            <div class="stat-label">Score</div>
+            <div class="stat-label">Total Score</div>
             <div id="score" class="stat-value">0</div>
         </div>
         <div class="stat-box">
-            <div class="stat-label">Level</div>
+            <div class="stat-label">Current Level</div>
             <div id="level" class="stat-value">1</div>
         </div>
         <div class="controls">
-            Arrows: Move & Drop<br>
-            Q, W: Rotate
+            <b>← →</b> : 이동<br>
+            <b>↓</b> : 빠른 하강<br>
+            <b>Q, W</b> : 블록 회전
         </div>
     </div>
 </div>
 
 <script>
-// --- 오디오 엔진 (테트리스 메인 테마 구현) ---
+// --- 오디오 엔진 (신나는 테트리스 풀 테마) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-function playNote(freq, start, duration) {
+function playNote(freq, start, duration, type = 'square') {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = 'square';
+    osc.type = type;
     osc.frequency.setValueAtTime(freq, start);
-    gain.gain.setValueAtTime(0.02, start);
-    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+    
+    gain.gain.setValueAtTime(0.03, start);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start(start);
@@ -62,20 +69,29 @@ function playNote(freq, start, duration) {
 }
 
 function playBGM() {
-    const tempo = 0.25;
+    const tempo = 0.14; // 훨씬 빠른 속도
+    // 주파수 상수
+    const E5 = 659.25, B4 = 493.88, C5 = 523.25, D5 = 587.33, A4 = 440.00, G4 = 392.00, F4 = 349.23;
+
     const melody = [
-        [659.25, 1], [493.88, 0.5], [523.25, 0.5], [587.33, 1], [523.25, 0.5], [493.88, 0.5],
-        [440.00, 1], [440.00, 0.5], [523.25, 0.5], [659.25, 1], [587.33, 0.5], [523.25, 0.5],
-        [493.88, 1.5], [523.25, 0.5], [587.33, 1], [659.25, 1], [523.25, 1], [440.00, 1], [440.00, 1]
+        [E5, 2], [B4, 1], [C5, 1], [D5, 2], [C5, 1], [B4, 1],
+        [A4, 2], [A4, 1], [C5, 1], [E5, 2], [D5, 1], [C5, 1],
+        [B4, 3], [C5, 1], [D5, 2], [E5, 2], [C5, 2], [A4, 2], [A4, 2],
+        [0, 2], [D5, 3], [F4, 1], [A4, 2], [G4, 1], [F4, 1],
+        [E5, 3], [C5, 1], [E5, 2], [D5, 1], [C5, 1],
+        [B4, 2], [B4, 1], [C5, 1], [D5, 2], [E5, 2], [C5, 2], [A4, 2], [A4, 2]
     ];
-    
-    let time = audioCtx.currentTime;
+
+    let time = audioCtx.currentTime + 0.1;
     function scheduler() {
         melody.forEach(([freq, dur]) => {
-            playNote(freq, time, dur * tempo * 1.8);
-            time += dur * tempo * 2;
+            if (freq > 0) playNote(freq, time, dur * tempo, 'triangle');
+            // 베이스 비트 추가 (쿵 소리)
+            playNote(80, time, 0.1, 'sine'); 
+            time += dur * tempo;
         });
-        setTimeout(scheduler, time - audioCtx.currentTime); // 무한 반복
+        // 루프 예약
+        setTimeout(scheduler, (time - audioCtx.currentTime) * 1000 - 100);
     }
     scheduler();
 }
@@ -83,8 +99,8 @@ function playBGM() {
 function playLineSound() {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1);
+    osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(2400, audioCtx.currentTime + 0.1);
     gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
     gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
     osc.connect(gain);
@@ -93,7 +109,7 @@ function playLineSound() {
     osc.stop(audioCtx.currentTime + 0.1);
 }
 
-// --- 게임 로직 ---
+// --- 게임 엔진 ---
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next');
@@ -198,21 +214,20 @@ function arenaSweep() {
         playLineSound();
         if(player.score >= player.level * 100) {
             player.level++;
-            dropInterval *= 0.9;
+            dropInterval *= 0.85;
         }
     }
     updateScore();
 }
 
-// 블록 즉시 멈춤 핵심 로직
 function playerDrop() {
     player.pos.y++;
     if (collide(arena, player)) {
-        player.pos.y--; // 충돌 직전 위치로 복구
-        merge(arena, player); // 즉시 고정
+        player.pos.y--;
+        merge(arena, player);
         playerReset();
         arenaSweep();
-        return; // 즉시 종료하여 불필요한 카운터 초기화 방지
+        return;
     }
     dropCounter = 0;
 }
